@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Securing Microservices with Identity and Access Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7fb;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        header {
+            background-color: #0073e6;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+
+        main {
+            padding: 30px;
+        }
+
+        section {
+            margin-bottom: 40px;
+        }
+
+        section h2 {
+            color: #0073e6;
+            font-size: 1.8em;
+            border-bottom: 2px solid #0073e6;
+            padding-bottom: 10px;
+        }
+
+        section p, section ul {
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        section ul {
+            margin-left: 20px;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-top: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        footer {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            margin-top: 40px;
+        }
+
+        footer p {
+            margin: 0;
+        }
+
+        .screenshot-placeholder img {
+            max-height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Securing Microservices with Identity and Access Management</h1>
+    </header>
+
+    <main>
+        <section>
+            <h2>Introduction</h2>
+            <p>In today's fast-paced development environment, building secure, scalable, and flexible Identity and Access Management (IAM) systems is crucial. With the increasing adoption of microservices, APIs, and mobile applications, traditional authentication methods can struggle to meet the demands of modern architectures. In this post, we'll walk through setting up an IAM solution using OAuth 2.0, OpenID Connect (OIDC), and JSON Web Tokens (JWT). This powerful combination provides a streamlined, token-based approach to authentication and authorization, ensuring seamless integration, improved security, and a better user experience. Whether you're working with web apps, mobile platforms, or APIs, this guide will help you implement a robust IAM system that supports today's digital ecosystem.</p>
+        </section>
+
+        <section>
+            <h2>What do you need?</h2>
+            <p>In order to set up an IAM solution, a few things will need to be configured:</p>
+            <ul>
+                <li><strong>An authorization server</strong>: This server will be responsible for handling the OAuth 2.0 flows for authenticating users and providing JWTs. This server also needs an introspection endpoint to which microservices can call to verify JWTs.</li>
+                <li><strong>A microservice functioning as an OAuth 2.0 client</strong>: In order to fully test the centralized authentication, we need a microservice that is going to verify any received JWT by calling the authorization servers.</li>
+            </ul>
+        </section>
+
+
+        <section id="jwt-explanation">
+            <h2>How JWT Works</h2>
+            <p>JWT (JSON Web Token) is a compact and self-contained way to represent information between two parties. It consists of three parts:</p>
+            <ul>
+                <li><strong>Header:</strong> Contains metadata about the token, such as the algorithm used for signing (e.g., HMAC, RSA).</li>
+                <li><strong>Payload:</strong> Contains the claims, or the actual data. This can include user information like ID, roles, etc.</li>
+                <li><strong>Signature:</strong> Ensures the token hasn’t been altered. It’s created by signing the header and payload with a secret key or private key.</li>
+            </ul>
+            <p>When a user logs in, the server creates a JWT and sends it back to the client. The client can then use this token for authentication in subsequent requests, ensuring secure communication without needing to send sensitive information like passwords repeatedly.</p>
+        
+            <!-- Screenshot for the Authorization Server -->
+            <div class="screenshot-section">
+                <div class="screenshot-placeholder">
+                    <img src="screenshots\jwt-io.png" alt="Authorization Server dependencies">               
+                </div>
+            </div>
+
+            <p>In the screenshot above a JWT is shown. This JWT was created by our authorization server. On the left you can see what an encoded token looks like, while on the right the data in the token is shown.
+                 The most relevant part of this JWT is the payload, as this contains the user data. The following claims are set in this token:</p>
+                 <div class="token-details">
+                    <p>The <span>roles</span> field lists the roles associated with the user. Here, the user has three roles:</p>
+                    <ul>
+                        <li><span>ROLE_USER</span></li>
+                        <li><span>ROLE_TUTOR</span></li>
+                        <li><span>ROLE_STUDENT</span></li>
+                    </ul>
+                </div>
+            
+                <div class="token-details">
+                    <p>The <span>sub</span> field represents the subject of the token, which is typically the identifier for the user. In this case, it is <span>"testuser5"</span>.</p>
+                </div>
+            
+                <div class="token-details">
+                    <p>The <span>iat</span> (Issued At) is a timestamp in Unix time format, representing when the token was issued. In this case, <span>1734093204</span> corresponds to a specific date and time. You can convert it to a human-readable format.</p>
+                </div>
+            
+                <div class="token-details">
+                    <p>The <span>exp</span> (Expiration) is a timestamp in Unix time format, representing when the token will expire. In this case, <span>1734096804</span> marks when the token will no longer be valid.</p>
+                </div>
+        </section>
+
+        <section>
+            <h2>Setting up the Authorization Server.</h2>
+            <p>Let's start by setting up the authorization server. This server is going to be responsible for managing the user identities, but also for generating and verifying JWTs throughout the application</p>
+            <p>In order to create a functioning authorization server, the following dependencies are to be added to the Spring Boot project:</p>
+
+            <!-- Screenshot for the Authorization Server -->
+            <div class="screenshot-section">
+                <div class="screenshot-placeholder">
+                    <img src="screenshots\as-dependencies.png" alt="Authorization Server dependencies">               
+                </div>
+            </div>
+
+            <p>Once we have our dependencies properly imported, we can start building the authorization server. Let’s start by getting our SecurityConfig set up, which is shown in the screenshot below. This SecurityConfig class is used to configure and customize the security settings for the application. It  contains the necessary configurations for authentication, authorization, and other security-related features.</p>
+
+
+            <p>This SecurityFilterChain is going to be executed with every incoming request. For every request, except the ones with /auth/** and /token/introspection will be subjected to the authorization process that will be configured. 
+                You may also notice that a oauth2ResourceServer is configured, with a JwtAuthenticationConverter as a parameter. This tells the server to authenticate requests using JWT, with a custom JWT authentication converter to extract and validate the JWT. 
+                This custom converter is just created to extract roles from the received JWT.</p>
+
+            <!-- Screenshot for the Authorization Server -->
+            <div class="screenshot-section">
+                <div class="screenshot-placeholder">
+                    <img src="screenshots\security-filter-chain.png" alt="Authorization Server dependencies">               
+                </div>
+            </div>
+
+            <p>In the securityFilterChain, we see an <code>.addFilterBefore(jwtAuthenticationFilter)</code>. 
+                Let’s build that next. In order to do so, we need a JwtService and an implementation of the Spring security UserDetailsService. 
+                Before we dive into that however, we need to figure out how to generate a JWT. The screenshot below shows how a JWT can be generated with the proper claims.</p>
+
+                <div class="screenshot-section">
+                    <div class="screenshot-placeholder">
+                        <img src="screenshots\token-generation.png" alt="Authorization Server dependencies">               
+                    </div>
+                </div>
+
+                <p>In the JwtService class, a JWT (JSON Web Token) is generated using the generateToken method. This method starts by collecting additional claims, such as the user's roles, which are derived from the user's authorities. These claims are added to a map that will be included in the JWT. The token is then built using the Jwts.builder(), where it sets the claims, the subject (which is the username of the user), and the issued and expiration dates. The expiration time is defined by the jwtExpiration value, ensuring the token is valid only for a specific period.
+
+                    The token is then signed using a secret key (in this case, a hardcoded key), using the HMAC SHA-256 signing algorithm (SignatureAlgorithm.HS256). This ensures that the token can be verified later using the same secret key to ensure its integrity and authenticity. Finally, the token is compacted into a string, which is returned as the generated JWT. This process ensures that the generated token contains all necessary information (such as user roles, username and the time of issuing and expiration) and is securely signed.</p>
+
+            <p>Next, let's get back to the UserDetailsService we discussed earlier. This service is used to manage users.</p>
+
+            <p>In the UserDetailsService, we are going to override the default Spring security <code>loadUserByUsername</code> method. This is going to try and fetch a user from our database (more info on how that is set up is in the git repo).</p>
+            
+            <!-- Screenshot for the Authorization Server -->
+            <div class="screenshot-section">
+                <div class="screenshot-placeholder">
+                    <img src="screenshots\load-by-username.png" alt="Authorization Server dependencies">               
+                </div>
+            </div>
+
+            <p>As you may have noticed, the <code>loadUserByUsername</code> method requires a username. This is extracted from our token by the JwtService by decoding the token with our custom signature. We also need a method for checking if our token is even still valid, which will verify if the username provided in the JWT is known and whether the JWT is still valid based on the expiration time.</p>
+
+            <!-- Screenshot for the Authorization Server -->
+            <div class="screenshot-section">
+                <div class="screenshot-placeholder">
+                    <img src="screenshots\token-extraction.png" alt="Authorization Server dependencies">               
+                </div>
+            </div>
+
+            <p>This method, extractClaims, is used to extract claims (data) from a JWT. It first checks if the token is in the correct format (three parts separated by dots) and if valid, it uses a signing key to verify the token's authenticity. If valid, it parses the token and retrieves the claims. If the token is malformed or there’s an error while parsing, it logs the error and throws an exception. The extracted claims are then returned for further use.</p>
+        
+            <p>All of these checks will be executed in our JwtAuthenticationFilter. 
+                This method is a filter that checks if an incoming HTTP request contains a valid JWT token in the "Authorization" header. 
+                If the token is present, it extracts the username and validates the token using a service. 
+                If the token is valid, it creates an authentication object with the user's details and sets it in the Spring Security context, marking the user as authenticated.
+                 If the token is missing or invalid, it simply allows the request to proceed without altering the authentication state, which means access will not be granted and the request is thus rejected. 
+                 </p>
+
+                 <p>For logging in and registering a new account, these checks will not be executed, since the user will obviously not have an access token at that stage.</p>
+
+            <!-- Screenshot for the Authorization Server -->
+            <div class="screenshot-section">
+                <div class="screenshot-placeholder">
+                    <img src="screenshots\jwt-authenticaion-filter-class.png" alt="Authorization Server dependencies">               
+                </div>
+            </div>
+
+            <p>Lastly, a token introspection endpoint is set up, in order for other services to verify received tokens with the authorization server. 
+                This endpoint allows clients to introspect a token by checking if it is valid and returning relevant details like scope, username, roles, and expiration if the token is active. 
+                If the token is invalid, a bad request response is returned.</p>
+
+                <div class="screenshot-section">
+                    <div class="screenshot-placeholder">
+                        <img src="screenshots\introspect-token-endpoint.png" alt="Authorization Server dependencies">               
+                    </div>
+                </div>    
+
+                <p>
+                    This method is a Spring Boot controller endpoint that allows introspection of a JWT token. When a POST request is made to /introspection with a token as a parameter, it first validates the token using the validateToken method, which checks if the token is valid by verifying it against the user details. If the token is valid, it responds with a map containing information about the token, including its active status (active: true), scope (read write), the username extracted from the token, roles, and an expiration time (set to 1 hour from the current time). If the token is invalid, the endpoint returns a bad request response with the status of the token.
+                </p>
+
+                <p>So what does this look like in practice? Let's try and approach this endpoint via postman with a valid token passed to the endpoint as a parameter.</p>
+
+                <div class="screenshot-section">
+                    <div class="screenshot-placeholder">
+                        <img src="screenshots\introspection-endpoint-postman.png" alt="Authorization Server dependencies">               
+                    </div>
+                </div>   
+
+                <p> In the screenshot above we can see how the /introspect enpoint looks like. This JSON response provides details about a JWT token:</p>
+        <ul>
+            <li><strong>scope</strong>: This field indicates the permissions granted by the token. In this case, the token allows <code>read</code> and <code>write</code> permissions.</li>
+            <li><strong>roles</strong>: This is a list of roles assigned to the user. In this example, the user has three roles:
+                <ul>
+                    <li><code>ROLE_USER</code>: General user role.</li>
+                    <li><code>ROLE_TUTOR</code>: Role indicating the user is a tutor.</li>
+                    <li><code>ROLE_STUDENT</code>: Role indicating the user is a student.</li>
+                </ul>
+            </li>
+            <li><strong>active</strong>: A boolean value indicating if the token is still valid. <code>true</code> means the token is active and valid.</li>
+            <li><strong>exp</strong>: The expiration time of the token, shown as a Unix timestamp. In this example, <code>1734097615</code> represents the token's expiration time.</li>
+            <li><strong>username</strong>: The username of the user associated with the token. Here, the username is <code>testuser5</code>.</li>
+        </ul>
+
+        <p> So now we know what to expect for a request with a valid token. How about an invalid request?
+            The screenshot below shows what that looks like. As you can see in the bottom right the server simply returns HTTP status code 401, meaning Unauthorized.
+        </p>
+        <div class="screenshot-section">
+            <div class="screenshot-placeholder">
+                <img src="screenshots\endpoint-badrequest.png" alt="Authorization Server dependencies">               
+            </div>
+        </div>  
+        </section>
+
+        <section>
+            <h2>Setting up the Client</h2>
+
+            <p>The second part of this project is setting up a client, which will need to use the authorization server to verify any received request. Let’s set up a simple chatserver for this.</p>
+            <!-- Screenshot for the Client -->
+            <div class="screenshot-section">
+                <div class="screenshot-placeholder">
+                    <img src="screenshots\send-message.png" alt="Authorization Server dependencies">               
+                </div>
+            </div>  
+            <p>In the screenshot you can see an endpoint that was created in the chatserver. This does not do much in terms of functionality, but it does verify the user's JWT. As you can see, if a message is to be sent, the user’s identity is verified by calling the <code>introspectToken</code> method. Also, a required role is provided. The user must have this role, otherwise the request gets rejected. Let’s take a closer look at the <code>introspectToken</code> method.</p>
+            <div class="screenshot-section">
+                <div class="screenshot-placeholder">
+                    <img src="screenshots\introspect-token-client.png" alt="Authorization Server dependencies">               
+                </div>
+            </div>  
+            <p>The <code>IntrospectToken</code> method is going to try and make a call to the introspection endpoint in our authorization server, which requires the token to be sent as a parameter. One of the details we had the introspection endpoint return, is whether the token is valid. Another claim we return is the roles the user has. If the token is still valid, and the user has the right permissions (roles), the call is approved and the user is allowed to send a message.</p>
+        
+            <p>So now we know how the chatserver can verify what requests are valid and what requests are not, let's see how this looks. Below is a screenshot of a request in postman. In this request, we send a message("hey"), and pass the token as a "Bearer token". This way, the service can detect it and pass it to the authorization server for verification.</p>
+       
+            <div class="screenshot-section">
+                <div class="screenshot-placeholder">
+                    <img src="screenshots\message-with-valid-token.png" alt="Authorization Server dependencies">               
+                </div>
+            </div>  
+            <p>As is visible in the screenshot, the server returns "Message sent successfully" and a HTTP status code of 200. This means that our message has successfully been sent and thus, our request was valid. Next, let's see how an invalid request looks. This time, let's remove one character from our token to see if the authorization server can detect that the token has been altered.</p>
+        
+            <div class="screenshot-section">
+                <div class="screenshot-placeholder">
+                    <img src="screenshots\invalid-request.png" alt="Authorization Server dependencies">               
+                </div>
+            </div>  
+        
+            <p>As you can see, the request cannot be handled correctly anymore now that the token has been altered. Unfortunately, the message returned to us is HTTP status 500, which is not ideal. If you want to make your own prototype, this would be a recommended point to improve on. Make sure a clear error message is shown, like "The token provided is invalid, please reauthenticate."</p>
+        </section>
+
+        <section>
+            <h2>Conclusion</h2>
+            <p>In this guide, we've walked through the process of setting up a robust Identity and Access Management (IAM) solution for securing microservices using OAuth 2.0, OpenID Connect (OIDC), and JWTs. By leveraging these modern authentication and authorization protocols, we've demonstrated how to create secure, token-based communication between clients and services. Whether you're building APIs, web applications, or mobile apps, this setup ensures that sensitive data is protected while providing a seamless user experience.</p>
+            
+            <p>We began with the setup of an authorization server to handle user authentication, token issuance, and verification. Next, we explored the use of JWTs for carrying claims and roles, enabling fine-grained access control. Then, we discussed how microservices can integrate with the authorization server, using token introspection to validate incoming requests and ensure only authorized users have access to certain resources. Finally, we highlighted the process of verifying user tokens on the client side, demonstrating how to maintain security without sacrificing performance or user experience.</p>
+        
+            <p>By adopting a centralized authentication system, you can more easily manage user identities, roles, and permissions across multiple services, all while ensuring scalability, security, and compliance with modern standards. Whether you're developing a microservices architecture or integrating IAM into an existing system, this guide provides the essential building blocks for securing your applications in today's complex digital ecosystem.</p>
+        </section> 
+    </main>
+
+    <footer>
+        <p>© 2024 IAM Systems Blog. All rights reserved.</p>
+    </footer>
+</body>
+</html>
