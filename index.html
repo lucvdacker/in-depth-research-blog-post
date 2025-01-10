@@ -3,15 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Securing Microservices with Identity and Access Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            hljs.highlightAll();
+        });
+    </script>
+    <title>Improved Dependencies Display</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f4f7fb;
+            background-color: #1e1e1e;
             margin: 0;
             padding: 0;
-            color: #333;
+            color: #c9d1d9;
         }
+
+        pre {
+    background: #282c34;
+    border-left: 4px solid #4e88f7;
+    padding: 10px;
+    overflow-x: auto;
+    border-radius: 4px;
+    max-width: 80%; /* Adjust width to make it less wide */
+    margin: 0 auto; /* Center the block */
+}
+
+code {
+    font-family: "Courier New", Courier, monospace;
+    color: #fbd38d;
+    font-size: 14px;
+}
+
 
         header {
             background-color: #0073e6;
@@ -29,48 +53,17 @@
             padding: 30px;
         }
 
-        section {
-            margin-bottom: 40px;
-        }
-
         section h2 {
-            color: #0073e6;
+            color: #61dafb;
             font-size: 1.8em;
-            border-bottom: 2px solid #0073e6;
+            border-bottom: 2px solid #61dafb;
             padding-bottom: 10px;
         }
 
-        section p, section ul {
-            font-size: 1.1em;
-            line-height: 1.6;
-        }
-
-        section ul {
-            margin-left: 20px;
-        }
-
-        img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-            margin-top: 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        footer {
-            background-color: #333;
-            color: white;
-            text-align: center;
-            padding: 10px;
-            margin-top: 40px;
-        }
-
-        footer p {
-            margin: 0;
-        }
-
-        .screenshot-placeholder img {
-            max-height: 100%;
+        /* Optional: Add hover effect on code blocks for a polished look */
+        pre:hover {
+            background-color: #323842;
+            transition: background-color 0.3s ease-in-out;
         }
     </style>
 </head>
@@ -82,15 +75,38 @@
     <main>
         <section>
             <h2>Introduction</h2>
-            <p>In today's fast-paced development environment, building secure, scalable, and flexible Identity and Access Management (IAM) systems is crucial. With the increasing adoption of microservices, APIs, and mobile applications, traditional authentication methods can struggle to meet the demands of modern architectures. In this post, we'll walk through setting up an IAM solution using OAuth 2.0, OpenID Connect (OIDC), and JSON Web Tokens (JWT). This powerful combination provides a streamlined, token-based approach to authentication and authorization, ensuring seamless integration, improved security, and a better user experience. Whether you're working with web apps, mobile platforms, or APIs, this guide will help you implement a robust IAM system that supports today's digital ecosystem.</p>
+            <p>
+                In today's fast-paced development environment, building secure, scalable, and flexible Identity and Access Management (IAM) systems is crucial. With the increasing adoption of microservices, APIs, and mobile applications, traditional authentication methods can struggle to meet the demands of modern architectures. In this post, we'll walk through setting up an IAM solution using OAuth 2.0, OpenID Connect (OIDC), and JSON Web Tokens (JWT). This powerful combination provides a streamlined, token-based approach to authentication and authorization, ensuring seamless integration, improved security, and a better user experience.
+            </p>
+            <p>
+                OAuth 2.0, the foundation of many modern IAM solutions, is an open standard for delegating authorization. To better understand how OAuth works, let’s briefly explore its main components:
+            </p>
+            <ul>
+                <li>
+                    <strong>Authorization Server</strong>: This server is responsible for authenticating users and issuing access tokens. It handles the OAuth 2.0 flows, ensuring that only authorized clients and users can access protected resources. The server also manages token lifecycles, including token issuance, validation, and revocation.
+                </li>
+                <li>
+                    <strong>Resource Server</strong>: The resource server hosts and secures APIs or services that users or clients want to access. When a request is received, it validates the access token provided by the client with the authorization server before granting access.
+                </li>
+                <li>
+                    <strong>Client</strong>: A client is the application that wants to access protected resources on behalf of a user. This can be a web app, mobile app, or any other type of application. Clients must be registered with the authorization server and must securely handle credentials like client secrets.
+                </li>
+                <li>
+                    <strong>Resource Owner</strong>: The resource owner is the user who owns the data or resources being accessed. For example, if a user authorizes a third-party app to access their account information, the user is the resource owner.
+                </li>
+            </ul>
+            <p>
+                In this guide, we’ll show you how these components work together to enable secure communication in modern IAM systems. Whether you're working with web apps, mobile platforms, or APIs, this guide will help you implement a robust IAM system that supports today's digital ecosystem. For further explanation on why these techniques and frameworks are so reliable, I recommend you read the full research on this topic.
+            </p>
         </section>
+        
 
         <section>
             <h2>What do you need?</h2>
             <p>In order to set up an IAM solution, a few things will need to be configured:</p>
             <ul>
                 <li><strong>An authorization server</strong>: This server will be responsible for handling the OAuth 2.0 flows for authenticating users and providing JWTs. This server also needs an introspection endpoint to which microservices can call to verify JWTs.</li>
-                <li><strong>A microservice functioning as an OAuth 2.0 client</strong>: In order to fully test the centralized authentication, we need a microservice that is going to verify any received JWT by calling the authorization servers.</li>
+                <li><strong>A microservice functioning as an OAuth 2.0 Resource server</strong>: In order to fully test the centralized authentication, we need a microservice that is going to verify any received JWT by calling the authorization servers.</li>
             </ul>
         </section>
 
@@ -103,6 +119,7 @@
                 <li><strong>Payload:</strong> Contains the claims, or the actual data. This can include user information like ID, roles, etc.</li>
                 <li><strong>Signature:</strong> Ensures the token hasn’t been altered. It’s created by signing the header and payload with a secret key or private key.</li>
             </ul>
+            <p>If you want to examine your own JWT: you can do so by visiting <a href="https://jwt.io" target="_blank">jwt.io</a></p>
             <p>When a user logs in, the server creates a JWT and sends it back to the client. The client can then use this token for authentication in subsequent requests, ensuring secure communication without needing to send sensitive information like passwords repeatedly.</p>
         
             <!-- Screenshot for the Authorization Server -->
@@ -141,12 +158,34 @@
             <p>Let's start by setting up the authorization server. This server is going to be responsible for managing the user identities, but also for generating and verifying JWTs throughout the application</p>
             <p>In order to create a functioning authorization server, the following dependencies are to be added to the Spring Boot project:</p>
 
-            <!-- Screenshot for the Authorization Server -->
-            <div class="screenshot-section">
-                <div class="screenshot-placeholder">
-                    <img src="screenshots\as-dependencies.png" alt="Authorization Server dependencies">               
-                </div>
-            </div>
+
+            <section>
+                <p>Below are the Maven dependencies you need to add:</p>
+                <pre><code class="language-xml">
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-boot-starter-security&lt;/artifactId&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;io.jsonwebtoken&lt;/groupId&gt;
+            &lt;artifactId&gt;jjwt-api&lt;/artifactId&gt;
+            &lt;version&gt;0.11.5&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;io.jsonwebtoken&lt;/groupId&gt;
+            &lt;artifactId&gt;jjwt-impl&lt;/artifactId&gt;
+            &lt;version&gt;0.11.5&lt;/version&gt;
+            &lt;scope&gt;runtime&lt;/scope&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;io.jsonwebtoken&lt;/groupId&gt;
+            &lt;artifactId&gt;jjwt-jackson&lt;/artifactId&gt;
+            &lt;version&gt;0.11.5&lt;/version&gt;
+            &lt;scope&gt;runtime&lt;/scope&gt;
+        &lt;/dependency&gt;
+                </code></pre>
+            </section>
+            
 
             <p>Once we have our dependencies properly imported, we can start building the authorization server. Let’s start by getting our SecurityConfig set up, which is shown in the screenshot below. This SecurityConfig class is used to configure and customize the security settings for the application. It  contains the necessary configurations for authentication, authorization, and other security-related features.</p>
 
@@ -155,22 +194,93 @@
                 You may also notice that a oauth2ResourceServer is configured, with a JwtAuthenticationConverter as a parameter. This tells the server to authenticate requests using JWT, with a custom JWT authentication converter to extract and validate the JWT. 
                 This custom converter is just created to extract roles from the received JWT.</p>
 
-            <!-- Screenshot for the Authorization Server -->
-            <div class="screenshot-section">
-                <div class="screenshot-placeholder">
-                    <img src="screenshots\security-filter-chain.png" alt="Authorization Server dependencies">               
-                </div>
-            </div>
 
+
+            <section>
+
+                <pre><code class="language-java">
+                    @Bean
+                    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+                        http.csrf()
+                                .disable()
+                                .authorizeHttpRequests()
+                                .requestMatchers("/auth/**", "/token/introspection")
+                                .permitAll()
+                                .anyRequest()
+                                .authenticated()
+                                .and()
+                                .sessionManagement()
+                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                                .and()
+                                .authenticationProvider(authenticationProvider)
+                                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                                .oauth2ResourceServer(oauth2 -> oauth2
+                                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+                                );
+                
+                        return http.build();
+                    }
+                </code></pre>
+            </section>
             <p>In the securityFilterChain, we see an <code>.addFilterBefore(jwtAuthenticationFilter)</code>. 
                 Let’s build that next. In order to do so, we need a JwtService and an implementation of the Spring security UserDetailsService. 
                 Before we dive into that however, we need to figure out how to generate a JWT. The screenshot below shows how a JWT can be generated with the proper claims.</p>
 
-                <div class="screenshot-section">
-                    <div class="screenshot-placeholder">
-                        <img src="screenshots\token-generation.png" alt="Authorization Server dependencies">               
-                    </div>
-                </div>
+
+                <pre><code class="language-java">
+                    public String generateToken(UserDetails userDetails) throws Exception {
+                        return generateToken(new HashMap<>(), userDetails);
+                    }
+                
+                    public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) throws Exception {
+                        extraClaims.put("roles", userDetails.getAuthorities().stream()
+                                .map(GrantedAuthority::getAuthority)
+                                .collect(Collectors.toList()));
+                //        return encryptToken(buildToken(extraClaims, userDetails));
+                        return buildToken(extraClaims, userDetails);
+                
+                    }
+                
+                    public long getExpirationTime() {
+                        return jwtExpiration;
+                    }
+                
+                    private String buildToken(
+                            Map<String, Object> extraClaims,
+                            UserDetails userDetails
+                    ) {
+                        String token = Jwts
+                                .builder()
+                                .setClaims(extraClaims)
+                                .setSubject(userDetails.getUsername())
+                                .setIssuedAt(new Date(System.currentTimeMillis()))
+                                .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
+                                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
+                                .compact();
+                
+                        try {
+                            return token;
+                        } catch (Exception e) {
+                            throw new RuntimeException("Failed to encrypt the token", e);
+                        }
+                    }
+                
+                    private Claims extractAllClaims(String token) {
+                        return Jwts
+                                .parserBuilder()
+                                .setSigningKey(getSignInKey())
+                                .build()
+                                .parseClaimsJws(token)
+                                .getBody();
+                    }
+                
+                    private Key getSignInKey() {
+                        // Directly use the secret key without Base64 encoding/decoding
+                        byte[] keyBytes = secretKey.getBytes(StandardCharsets.UTF_8); // Use consistent key handling
+                        return Keys.hmacShaKeyFor(keyBytes); // Use the raw key for signing/verification
+                    }
+                </code></pre>
+
 
                 <p>In the JwtService class, a JWT (JSON Web Token) is generated using the generateToken method. This method starts by collecting additional claims, such as the user's roles, which are derived from the user's authorities. These claims are added to a map that will be included in the JWT. The token is then built using the Jwts.builder(), where it sets the claims, the subject (which is the username of the user), and the issued and expiration dates. The expiration time is defined by the jwtExpiration value, ensuring the token is valid only for a specific period.
 
@@ -180,21 +290,75 @@
 
             <p>In the UserDetailsService, we are going to override the default Spring security <code>loadUserByUsername</code> method. This is going to try and fetch a user from our database (more info on how that is set up is in the git repo).</p>
             
-            <!-- Screenshot for the Authorization Server -->
-            <div class="screenshot-section">
-                <div class="screenshot-placeholder">
-                    <img src="screenshots\load-by-username.png" alt="Authorization Server dependencies">               
-                </div>
-            </div>
+            <pre><code class="language-java">
+                @Override
+                public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+                    Optional<TucityUser> user = userRepository.findByUsername(username);
+                    if (user.isEmpty()) {
+                        throw new UsernameNotFoundException("User not found");
+                    }
+                    return user.get();
+                }
+            </code></pre>
+
+
 
             <p>As you may have noticed, the <code>loadUserByUsername</code> method requires a username. This is extracted from our token by the JwtService by decoding the token with our custom signature. We also need a method for checking if our token is even still valid, which will verify if the username provided in the JWT is known and whether the JWT is still valid based on the expiration time.</p>
 
-            <!-- Screenshot for the Authorization Server -->
-            <div class="screenshot-section">
-                <div class="screenshot-placeholder">
-                    <img src="screenshots\token-extraction.png" alt="Authorization Server dependencies">               
-                </div>
-            </div>
+            <pre><code class="language-java">    public String extractUsername(String token) {
+                Claims claims = extractClaims(token);
+                return claims.getSubject();
+            }
+        
+            public List<String> extractRoles(String token) {
+                Claims claims = extractClaims(token);
+                List<String> roles =  claims.get("roles", List.class);  // Extract roles from the claims
+                System.out.println(roles);
+                return roles;
+            }
+        
+            public Claims extractClaims(String token) {
+                try {
+        //            token = decryptToken(token);
+                    if (token != null && token.split("\\.").length == 3) {
+                        Claims claims = Jwts.parserBuilder()
+                                .setSigningKey(getSignInKey())
+                                .build()
+                                .parseClaimsJws(token)
+                                .getBody();
+                        System.out.println("Extracted Claims: " + claims); // Log the claims
+                        return claims;
+                    } else {
+                        System.err.println("Malformed JWT: Token does not have 3 parts");
+                        throw new MalformedJwtException("Token is malformed: Token should contain 3 parts separated by '.'");
+                    }
+                } catch (MalformedJwtException e) {
+                    System.err.println("Malformed JWT: " + token);
+                    System.err.println("Error: " + e.getMessage());
+                    throw e;
+                } catch (Exception e) {
+                    System.err.println("Error while parsing JWT: " + token);
+                    System.err.println("Error: " + e.getMessage());
+                    throw new RuntimeException("Invalid JWT", e);
+                }
+            }
+        
+        
+            public boolean isTokenValid(String token, UserDetails userDetails) {
+                final String username = extractUsername(token);
+                return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+            }
+        
+            private boolean isTokenExpired(String token) {
+                return extractExpiration(token).before(new Date());
+            }
+        
+            private Date extractExpiration(String token) {
+                // Extract the expiration date from the claims
+                Claims claims = extractClaims(token);  // Use the method that parses and validates the token
+                return claims.getExpiration();  // Return the expiration date from the claims
+            }</code></pre>
+
 
             <p>This method, extractClaims, is used to extract claims (data) from a JWT. It first checks if the token is in the correct format (three parts separated by dots) and if valid, it uses a signing key to verify the token's authenticity. If valid, it parses the token and retrieves the claims. If the token is malformed or there’s an error while parsing, it logs the error and throws an exception. The extracted claims are then returned for further use.</p>
         
@@ -207,28 +371,120 @@
 
                  <p>For logging in and registering a new account, these checks will not be executed, since the user will obviously not have an access token at that stage.</p>
 
-            <!-- Screenshot for the Authorization Server -->
-            <div class="screenshot-section">
-                <div class="screenshot-placeholder">
-                    <img src="screenshots\jwt-authenticaion-filter-class.png" alt="Authorization Server dependencies">               
-                </div>
-            </div>
+
+                 <pre><code class="language-java">
+                    @Component
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+    private final HandlerExceptionResolver handlerExceptionResolver;
+
+    private final JwtService jwtService;
+    private final UserDetailsService userDetailsService;
+
+
+    @Autowired
+    public JwtAuthenticationFilter(
+            JwtService jwtService,
+            UserDetailsService userDetailsService,
+            HandlerExceptionResolver handlerExceptionResolver
+    ) {
+        this.jwtService = jwtService;
+        this.userDetailsService = userDetailsService;
+        this.handlerExceptionResolver = handlerExceptionResolver;
+    }
+
+    @Override
+    protected void doFilterInternal(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain
+    ) throws ServletException, IOException {
+        final String authHeader = request.getHeader("Authorization");
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        final String jwt =  authHeader.substring(7); // Extract the token after "Bearer "
+        try {
+
+            final String username = jwtService.extractUsername(jwt);
+            System.out.println("Username: " + username);
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+            if (username != null && authentication == null) {
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+
+                if (jwtService.isTokenValid(jwt, userDetails)) {
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities()
+                    );
+
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+            }
+
+            filterChain.doFilter(request, response);
+        } catch (Exception exception) {
+            handlerExceptionResolver.resolveException(request, response, null, exception);
+        }
+    }
+
+}
+                 </code></pre>
 
             <p>Lastly, a token introspection endpoint is set up, in order for other services to verify received tokens with the authorization server. 
                 This endpoint allows clients to introspect a token by checking if it is valid and returning relevant details like scope, username, roles, and expiration if the token is active. 
                 If the token is invalid, a bad request response is returned.</p>
 
-                <div class="screenshot-section">
-                    <div class="screenshot-placeholder">
-                        <img src="screenshots\introspect-token-endpoint.png" alt="Authorization Server dependencies">               
-                    </div>
-                </div>    
+                <pre><code class="language-java">
+                    @RestController
+@RequestMapping("/token")
+@CrossOrigin(origins = "*")
+public class TokenIntrospectionController {
+
+    private final JwtService jwtService;
+    private final UserDetailsServiceImpl userDetailsService;
+
+    @Autowired
+    public TokenIntrospectionController(JwtService jwtService, UserDetailsServiceImpl userDetailsService) {
+        this.jwtService = jwtService;
+        this.userDetailsService = userDetailsService;
+    }
+
+    @PostMapping("/introspection")
+    public ResponseEntity<Map<String, Object>> introspectToken(@RequestParam("token") String token) {
+        // Decode and validate the token
+        boolean isValid = validateToken(token);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("active", isValid);
+
+        if (isValid) {
+            response.put("scope", "read write");
+            response.put("username", jwtService.extractUsername(token));
+            response.put("roles" , jwtService.extractRoles(token));
+            response.put("exp", System.currentTimeMillis() / 1000 + 3600);
+            System.out.println("response: " +response);
+            return ResponseEntity.ok(response);
+        }
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    private boolean validateToken(String token) {
+        return jwtService.isTokenValid(token, userDetailsService.loadUserByUsername(jwtService.extractUsername(token)));
+    }
+}
+                </code></pre>
 
                 <p>
                     This method is a Spring Boot controller endpoint that allows introspection of a JWT token. When a POST request is made to /introspection with a token as a parameter, it first validates the token using the validateToken method, which checks if the token is valid by verifying it against the user details. If the token is valid, it responds with a map containing information about the token, including its active status (active: true), scope (read write), the username extracted from the token, roles, and an expiration time (set to 1 hour from the current time). If the token is invalid, the endpoint returns a bad request response with the status of the token.
                 </p>
 
-                <p>So what does this look like in practice? Let's try and approach this endpoint via postman with a valid token passed to the endpoint as a parameter.</p>
+                <p>So what does this look like in practice? Let's try and approach this endpoint via Postman with a valid token passed to the endpoint as a parameter.</p>
 
                 <div class="screenshot-section">
                     <div class="screenshot-placeholder">
@@ -262,21 +518,58 @@
         </section>
 
         <section>
-            <h2>Setting up the Client</h2>
+            <h2>Setting up the Resource server</h2>
 
-            <p>The second part of this project is setting up a client, which will need to use the authorization server to verify any received request. Let’s set up a simple chatserver for this.</p>
-            <!-- Screenshot for the Client -->
-            <div class="screenshot-section">
-                <div class="screenshot-placeholder">
-                    <img src="screenshots\send-message.png" alt="Authorization Server dependencies">               
-                </div>
-            </div>  
-            <p>In the screenshot you can see an endpoint that was created in the chatserver. This does not do much in terms of functionality, but it does verify the user's JWT. As you can see, if a message is to be sent, the user’s identity is verified by calling the <code>introspectToken</code> method. Also, a required role is provided. The user must have this role, otherwise the request gets rejected. Let’s take a closer look at the <code>introspectToken</code> method.</p>
-            <div class="screenshot-section">
-                <div class="screenshot-placeholder">
-                    <img src="screenshots\introspect-token-client.png" alt="Authorization Server dependencies">               
-                </div>
-            </div>  
+            <p>The second part of this project is setting up a Resource server, which will need to use the authorization server to verify any received request. Let’s set up a simple chatserver for this.</p>
+
+            <pre><code class="language-java">
+                @PostMapping("/send-message")
+    public ResponseEntity<String> sendMessage(HttpServletRequest request, @RequestBody String message) {
+        // Step 1: Extract token from Authorization header
+        String token = extractToken(request);
+        if (token == null || token.isEmpty()) {
+            throw new IllegalArgumentException("Token is missing");
+        }
+        // Step 2: Call introspection endpoint to validate the token and handle based on token validity
+        if (!introspectToken(token, "ROLE_THE_USER_DOES_NOT_HAVE")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or expired token");
+        }
+        // Step 3: Proceed with processing the message (valid token)
+        return ResponseEntity.ok("Message sent successfully");
+    }
+            </code></pre>
+
+            <p>In the code snippet you can see an endpoint that was created in the chatserver. This does not do much in terms of functionality, but it does verify the user's JWT. As you can see, if a message is to be sent, the user’s identity is verified by calling the <code>introspectToken</code> method. Also, a required role is provided. The user must have this role, otherwise the request gets rejected. Let’s take a closer look at the <code>introspectToken</code> method.</p>
+
+
+            <pre><code class="language-java">
+                private boolean introspectToken(String token, String requiredRole) {
+                    // Define the URL for the introspection endpoint
+                    String introspectionUrl = "http://localhost:8080/token/introspection?token=" + token;
+                    // Create HttpHeaders and add the Authorization header with Bearer token
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.set("Authorization", token);
+                    // Create an HttpEntity with the headers (no body is needed for introspection)
+                    HttpEntity<String> entity = new HttpEntity<>(null, headers);
+                    // Make the POST request to the introspection endpoint with the Authorization header
+                    ResponseEntity<Map> response = restTemplate.exchange(
+                            introspectionUrl,
+                            HttpMethod.POST,
+                            entity,  // Pass the HttpEntity with the headers
+                            Map.class
+                    );
+                    // Check if the token is valid
+                    Map<String, Object> body = response.getBody();
+                    boolean isActive = (boolean) body.get("active");
+                    if (!isActive) {
+                        return false;
+                    }
+                    // Extract roles from the token claims
+                    List<String> roles = (List<String>) body.get("roles");
+                    // Check if the required role is present in the roles list
+                    return roles != null && roles.contains(requiredRole);
+                }
+            </code></pre>
             <p>The <code>IntrospectToken</code> method is going to try and make a call to the introspection endpoint in our authorization server, which requires the token to be sent as a parameter. One of the details we had the introspection endpoint return, is whether the token is valid. Another claim we return is the roles the user has. If the token is still valid, and the user has the right permissions (roles), the call is approved and the user is allowed to send a message.</p>
         
             <p>So now we know how the chatserver can verify what requests are valid and what requests are not, let's see how this looks. Below is a screenshot of a request in postman. In this request, we send a message("hey"), and pass the token as a "Bearer token". This way, the service can detect it and pass it to the authorization server for verification.</p>
@@ -308,7 +601,7 @@
     </main>
 
     <footer>
-        <p>© 2024 IAM Systems Blog. All rights reserved.</p>
+        <p>      A blog by Luc van den Acker</p>
     </footer>
 </body>
 </html>
